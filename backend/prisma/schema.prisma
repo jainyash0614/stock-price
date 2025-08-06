@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int       @id @default(autoincrement())
+  username    String    @unique
+  email       String    @unique
+  password    String
+  balance     Float     @default(10000)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  portfolio   Portfolio?
+  transactions Transaction[]
+  leaderboard Leaderboard?
+}
+
+model Stock {
+  id        Int       @id @default(autoincrement())
+  symbol    String    @unique
+  name      String
+  price     Float
+  volatility Float    @default(0.3)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  ipo        Boolean   @default(false)
+  transactions Transaction[]
+  holdings   Holding[]
+  marketEvents MarketEvent[]
+  priceHistory StockPriceHistory[]
+}
+
+model StockPriceHistory {
+  id        Int      @id @default(autoincrement())
+  stock     Stock    @relation(fields: [stockId], references: [id])
+  stockId   Int
+  price     Float
+  timestamp DateTime @default(now())
+  @@index([stockId, timestamp])
+}
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  stock     Stock    @relation(fields: [stockId], references: [id])
+  stockId   Int
+  type      TransactionType
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+model Portfolio {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @unique
+  holdings  Holding[]
+  totalValue Float   @default(0)
+  @@index([totalValue])
+}
+
+model Holding {
+  id         Int      @id @default(autoincrement())
+  portfolio  Portfolio @relation(fields: [portfolioId], references: [id])
+  portfolioId Int
+  stock      Stock    @relation(fields: [stockId], references: [id])
+  stockId    Int
+  quantity   Int
+  @@unique([portfolioId, stockId])
+}
+
+model MarketEvent {
+  id        Int      @id @default(autoincrement())
+  type      EventType
+  description String
+  createdAt DateTime @default(now())
+  stock     Stock?   @relation(fields: [stockId], references: [id])
+  stockId   Int?
+  @@index([type, createdAt])
+}
+
+enum EventType {
+  CRASH
+  IPO
+  NEWS
+  SURGE
+  ROTATION
+}
+
+model Leaderboard {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @unique
+  rank      Int
+  totalValue Float
+  updatedAt DateTime @updatedAt
+  @@index([rank])
+}
